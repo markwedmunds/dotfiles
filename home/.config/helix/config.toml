@@ -3,3 +3,25 @@ theme = "gruvbox-material-transparent"
 [editor]
 line-number = "relative"
 mouse = false
+
+# Swift playground loop, mirroring the Neovim <leader>rr / <leader>rt bindings.
+# Helix has no built-in terminal, so these open a WezTerm split running the
+# `swift` toolchain - the same interactive split-terminal feel. They shell out
+# via `wezterm cli split-pane`, so they only work when Helix runs inside WezTerm.
+# Bound under `\` (a backslash leader, unbound by default) so they don't shadow
+# space-mode's rename (space r) or file explorer (space e).
+#
+#   \r  save the current file, then run it with `swift` in a right split
+#   \t  open a bare `swift` REPL in a right split
+#   \q  close the output split (cmd+q would close the focused editor instead)
+#
+# The heavy lifting lives in ./swift-run (symlinked live to ~/.config/helix), so
+# the reuse/quoting logic stays out of this one-liner. It reuses a single output
+# split to the right of the editor: a re-run clears the old output, and if the
+# pane was closed a new one opens. %{buffer_name} is the buffer path relative to
+# Helix's working directory (`%{file_path_absolute}` only exists on Helix master,
+# not the 25.07 release); it is quoted so paths with spaces survive.
+[keys.normal."\\"]
+r = [":write", ":sh $HOME/.config/helix/swift-run run \"%{buffer_name}\""]
+t = ":sh $HOME/.config/helix/swift-run repl"
+q = ":sh $HOME/.config/helix/swift-run close"

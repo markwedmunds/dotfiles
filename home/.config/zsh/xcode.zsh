@@ -13,6 +13,7 @@
 #   xb             # build
 #   xt             # test
 #   xr             # build, install on the booted sim, launch
+#   xs file.swift  # run a single Swift file with the selected toolchain
 
 : "${XC_DEST:=platform=iOS Simulator,name=iPhone 17 Pro}"
 
@@ -100,4 +101,18 @@ xr() {
 
   xcrun simctl install booted "$dir/$name" || return
   xcrun simctl launch booted "$bid"
+}
+
+# Run a single Swift file (no project/scheme needed). Mirrors the Helix `\r`
+# binding (swift-run), going through `xcrun` so it uses the selected toolchain.
+# Defaults to test.swift in the cwd; pass a path to run something else. Any
+# extra args after the file are forwarded to the script.
+xs() {
+  local file="${1:-test.swift}"
+  if [[ ! -f "$file" ]]; then
+    print -u2 "xs: no such file: $file"
+    return 1
+  fi
+  shift 2>/dev/null
+  xcrun swift "$file" "$@"
 }

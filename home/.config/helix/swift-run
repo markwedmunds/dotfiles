@@ -1,0 +1,52 @@
+#!/bin/sh
+# Reusable Swift output pane for the Helix `\r` / `\t` keybindings (config.toml).
+#
+#   swift-run run <file>   run <file> with `xcrun swift`
+#   swift-run repl         open a Swift REPL with `xcrun swift repl`
+#   swift-run close        close the output split (the pane right of the editor)
+#
+# Spawns the pane via `wezterm cli`, so it only works when Helix runs inside
+# WezTerm. Everything goes through `xcrun` to track the selected Xcode toolchain
+# (matching languages.toml). A single split is kept directly to the right of the
+# editor: if one is already open it is replaced - so pressing the key again
+# clears the previous output - and if it was closed a fresh one is opened.
+#
+# The output split is found as "the pane to the right of the focused pane".
+# `get-pane-direction` resolves from the focused pane (it ignores --pane-id in
+# current wezterm), which is fine here: these run from Helix keybindings, and a
+# Helix binding only fires while Helix is focused - so "right of focus" is always
+# "right of the editor", i.e. the output split. `run` re-focuses the editor at
+# the end so the next key keeps working; the REPL intentionally keeps focus, so
+# you refocus Helix (as you must, to press the key) before the next run.
+set -eu
+
+# Replace whatever pane sits directly right of the editor (the old output).
+right=$(wezterm cli get-pane-direction right 2>/dev/null || true)
+[ -n "${right}" ] && wezterm cli kill-pane --pane-id "${right}" >/dev/null 2>&1 || true
+
+case "${1:-}" in
+  run)
+    file=${2:?run needs a file path}
+    # `exec tail -f /dev/null` holds the pane open showing only the program
+    # output - no shell prompt after it exits. Killed/replaced on the next run.
+    wezterm cli split-pane --right --percent 40 --cwd "${PWD}" -- \
+      zsh -c "xcrun swift \"${file}\"; exec tail -f /dev/null" >/dev/null
+    # Hand focus back to the editor so you can keep typing.
+    [ -n "${WEZTERM_PANE:-}" ] && wezterm cli activate-pane --pane-id "${WEZTERM_PANE}" >/dev/null 2>&1 || true
+    ;;
+  repl)
+    # `swift repl`, not bare `swift`: recent toolchains only print usage and
+    # exit for the latter. Leave focus in the REPL so you can type right away.
+    wezterm cli split-pane --right --percent 40 --cwd "${PWD}" -- \
+      xcrun swift repl >/dev/null
+    ;;
+  close)
+    # The output split was already removed by the kill-right above; the editor
+    # keeps focus (this runs from a Helix binding, so Helix is focused already).
+    # If no split was open, the kill above is a harmless no-op.
+    ;;
+  *)
+    echo "usage: swift-run {run <file>|repl}" >&2
+    exit 2
+    ;;
+esac
