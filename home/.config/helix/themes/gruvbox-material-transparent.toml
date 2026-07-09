@@ -1,0 +1,9 @@
+inherits = "gruvbox-material"
+
+"ui.background" = { bg = "none" }
+
+# Optional: also make these transparent so gutter/statusline
+# don't leave solid bars over the blur
+"ui.linenr" = { fg = "gray", bg = "none" }
+"ui.gutter" = { bg = "none" }
+"ui.statusline" = { fg = "white", bg = "none" }

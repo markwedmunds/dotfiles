@@ -18,8 +18,8 @@ Running the switch builds:
 - System settings (dark mode, key repeat, dock, Finder, trackpad)
 - Homebrew apps (casks and CLI tools)
 - Nix user packages (ripgrep, fd, fzf, jq, lazygit, Neovim, Hack Nerd Font)
-- Shell (zsh, aliases, starship prompt)
-- Editor (Neovim config)
+- Shell (zsh, aliases, starship prompt, Xcode build/run/test helpers)
+- Editors (Neovim and Helix configs)
 - Terminal (WezTerm config)
 - Agent configs (Claude, Codex, opencode all share one AGENTS.md)
 
@@ -79,6 +79,77 @@ Edit the config files in place, then apply:
 That's it.
 No separate build-and-copy step.
 
+## Swift & iOS development
+
+Two editors are set up for Swift. Neovim uses [xcodebuild.nvim](https://github.com/wojciech-kulik/xcodebuild.nvim) for an in-editor build/run/test picker (`<leader>x…`). Helix has no such plugin, so it handles editing (LSP, formatting, debugging) and the build/run/test loop lives in the shell helpers below.
+
+### Editor setup (both share the same tools)
+
+`sourcekit-lsp`, `swift-format` and `lldb-dap` all ship inside Xcode and are driven through `xcrun`, so there is nothing extra to install:
+
+- **Neovim** - config in `home/.config/nvim/lua/lsp.lua` (LSP) and `plugins/swift.lua` (xcodebuild.nvim).
+- **Helix** - config in `home/.config/helix/languages.toml`: sourcekit-lsp for completion/hover, `swift-format` as the formatter (`:format`), and `lldb-dap` for debugging macOS/SwiftPM binaries (`:debug-start binary <path>`). Check it with `hx --health swift`.
+
+### One-time per-project setup (Xcode projects only)
+
+For a `.xcodeproj` / `.xcworkspace` (anything that isn't a plain SwiftPM package), sourcekit-lsp needs a `buildServer.json` so it can resolve modules and dependencies. Run this once in the project root - it's provided by the `xcode-build-server` Homebrew formula:
+
+```sh
+xcode-build-server config -scheme <YourScheme> -workspace YourApp.xcworkspace
+#            ... or:       -scheme <YourScheme> -project   YourApp.xcodeproj
+```
+
+That writes `buildServer.json` at the repo root; reopen the file in your editor and the LSP picks it up. Plain SwiftPM packages (with a `Package.swift`) need no setup.
+
+### Shell build/run/test helpers
+
+Defined in `home/.config/zsh/xcode.zsh`. They auto-detect the `.xcworkspace`/`.xcodeproj` in the current directory (favouring the workspace) and pipe build logs through `xcbeautify`. Pick the target with two env vars - the scheme can also be passed as the first argument:
+
+```sh
+export XC_DEST='platform=iOS Simulator,name=iPhone 17 Pro'   # default if unset
+export XC_SCHEME=MyApp                                        # or: xb MyApp
+```
+
+| Command | What it does |
+|---|---|
+| `xboot [name]` | Open Simulator.app and boot the device (defaults to the one in `XC_DEST`) |
+| `xschemes` | List schemes/targets in the project here |
+| `xdest <scheme>` | List run destinations for a scheme |
+| `xb [scheme]` | Build |
+| `xt [scheme]` | Test |
+| `xr [scheme]` | Build, install on the booted sim, then launch |
+
+Debugging an app running on the iOS Simulator is still best done from Xcode itself; `lldb-dap` in Helix covers macOS/SwiftPM executables.
+
+## Flutter & Dart development
+
+Flutter SDKs are managed with [fvm](https://fvm.app) (`fvm` is a nix package; `home.nix` puts `~/fvm/default/bin` on `PATH`). The Flutter CLI is already ergonomic, so unlike Xcode there are no wrapper scripts - just `fvm flutter …`, shortened to the `fl` alias.
+
+### Editor setup
+
+The Dart analysis server, formatter, and debugger all ship with the SDK and are driven through `fvm`, so they honour a project's pinned version (`.fvmrc` / `.fvm/`) and fall back to the global `fvm global` SDK elsewhere. Nothing extra to install:
+
+- **Helix** - config in `home/.config/helix/languages.toml`: `fvm dart language-server` for completion/hover, `fvm dart format` as the formatter (runs on save; flip `auto-format` off to opt out), and the Flutter DAP (`fvm flutter debug_adapter`) for debugging (`:debug-start flutter`, then pick the entrypoint). Check it with `hx --health dart`.
+- **Neovim** - Dart LSP works via the built-in defaults; there's no dedicated Flutter plugin config.
+
+No per-project setup step is needed (the analyzer reads `pubspec.yaml` / `.dart_tool` directly) - just make sure you've run `fvm use <version>` and `fvm flutter pub get` in the project.
+
+### Common commands
+
+`fl` is aliased to `fvm flutter`:
+
+| Command | What it does |
+|---|---|
+| `fvm use <version>` | Pin this project to a Flutter version (writes `.fvmrc`) |
+| `fl pub get` | Fetch dependencies |
+| `fl devices` | List run targets (simulators, macOS, Chrome, …) |
+| `fl run` | Build & run with hot reload (`r` reload, `R` restart, `q` quit) |
+| `fl run -d <id>` | Run on a specific device from `fl devices` |
+| `fl test` | Run tests |
+| `fvm dart format .` | Format the whole tree from the CLI |
+
+Boot an iOS simulator first with the `xboot` helper from the Swift section (`xboot` defaults to the iPhone 17 Pro), then `fl run -d "iPhone 17 Pro"`.
+
 ## Make it yours
 
 This repo is mine.
@@ -128,7 +199,7 @@ If you don't use it, just remove it from `brews` in your copy.
 - `home.nix` - user-level config: shell, packages, prompt, and the symlinks described below.
 - `rebuild.sh` - re-applies the config after the first switch.
   Run this every time you make a change.
-- `home/` - the actual config files that get symlinked into place (Neovim, WezTerm, herdr, Claude settings, the shared `AGENTS.md`).
+- `home/` - the actual config files that get symlinked into place (Neovim, Helix, WezTerm, herdr, Claude settings, the shared `AGENTS.md`, and the Xcode shell helpers in `home/.config/zsh/xcode.zsh`).
 
 ## How the symlinks work
 

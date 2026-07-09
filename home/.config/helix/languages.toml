@@ -1,0 +1,68 @@
+# Swift for Helix. sourcekit-lsp, swift-format and lldb-dap all ship inside
+# Xcode rather than on $PATH, so every command goes through `xcrun`, which
+# resolves them against the active toolchain (see `xcode-select -p`). This
+# mirrors the Neovim setup in ../nvim/lua/lsp.lua and plugins/swift.lua.
+
+# Route sourcekit-lsp through xcrun so it tracks the selected Xcode toolchain,
+# instead of Helix's default bare `sourcekit-lsp` (the /usr/bin stub).
+[language-server.sourcekit-lsp]
+command = "xcrun"
+args = ["sourcekit-lsp"]
+
+[[language]]
+name = "swift"
+language-servers = ["sourcekit-lsp"]
+# swift-format reads from stdin with `-` and writes the result to stdout.
+# Set auto-format = true here if you want it to run on every save.
+formatter = { command = "xcrun", args = ["swift-format", "-"] }
+auto-format = false
+
+# Debugging with lldb-dap (bundled in Xcode). Works for macOS/SwiftPM
+# executables: `:debug-start binary <path-to-built-binary>`. Debugging an app
+# running on the iOS Simulator is still best done from Xcode itself.
+[language.debugger]
+name = "lldb-dap"
+transport = "stdio"
+command = "xcrun"
+args = ["lldb-dap"]
+
+[[language.debugger.templates]]
+name = "binary"
+request = "launch"
+completion = [{ name = "binary", completion = "filename" }]
+args = { program = "{0}" }
+
+
+# Dart / Flutter. Every SDK invocation goes through `fvm` so it respects a
+# project's pinned Flutter version (.fvmrc / .fvm/), falling back to the global
+# `fvm global` SDK outside a project. This overrides Helix's default dart LSP,
+# which would otherwise call the raw global `dart` on $PATH and mismatch pinned
+# projects. `fvm` and the global SDK come from the nix packages in home.nix.
+[language-server.dart]
+command = "fvm"
+args = ["dart", "language-server"]
+
+[[language]]
+name = "dart"
+# language-servers omitted on purpose: Helix keeps its built-in "dart" server,
+# now pointed at fvm by the override above.
+# `dart format` reads stdin and writes the formatted result to stdout. It is
+# canonical and idempotent, so run it on every save (flip to false to opt out).
+formatter = { command = "fvm", args = ["dart", "format"] }
+auto-format = true
+
+# Debug Flutter apps with the Flutter DAP server (`:debug-start flutter`, then
+# pick the entrypoint). `flutter devices` lists targets; add `-d <id>` in a
+# launch config for a specific one. Use `dart debug_adapter` instead for a plain
+# Dart CLI program.
+[language.debugger]
+name = "flutter"
+transport = "stdio"
+command = "fvm"
+args = ["flutter", "debug_adapter"]
+
+[[language.debugger.templates]]
+name = "flutter"
+request = "launch"
+completion = [{ name = "entrypoint", completion = "filename", default = "lib/main.dart" }]
+args = { program = "{0}" }
