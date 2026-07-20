@@ -12,6 +12,12 @@ args = ["sourcekit-lsp"]
 [[language]]
 name = "swift"
 language-servers = ["sourcekit-lsp"]
+# Pin the workspace root so sourcekit-lsp starts at the project directory (not
+# the nearest .git). buildServer.json (from xcode-build-server) roots .xcodeproj/
+# .xcworkspace projects; Package.swift roots plain SPM. This mirrors the Neovim
+# root_markers in ../nvim/lua/lsp.lua and is what lets cross-module symbols and
+# background indexing resolve in Xcode-project checkouts.
+roots = ["buildServer.json", "Package.swift", "compile_commands.json"]
 # swift-format reads from stdin with `-` and writes the result to stdout.
 # Set auto-format = true here if you want it to run on every save.
 formatter = { command = "xcrun", args = ["swift-format", "-"] }

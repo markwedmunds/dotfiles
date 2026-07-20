@@ -35,7 +35,12 @@ in
   # fvm keeps the globally-selected Flutter SDK at ~/fvm/default (a symlink it
   # manages via `fvm global <version>`). Putting its bin on PATH is what makes
   # `flutter`/`dart` resolve to that global version.
-  home.sessionPath = [ "${config.home.homeDirectory}/fvm/default/bin" ];
+  home.sessionPath = [
+    "${config.home.homeDirectory}/fvm/default/bin"
+    # rustup is installed with --no-modify-path since ~/.zshenv is read-only
+    # (managed by home-manager), so cargo's bin goes on PATH here instead.
+    "${config.home.homeDirectory}/.cargo/bin"
+  ];
 
   programs.zsh = {
     enable = true;
