@@ -1,6 +1,8 @@
+onboarding = false
 [theme]
-name = "gruvbox"  # match wezterm's "Gruvbox dark, hard" and nvim's gruvbox
+name = "terminal"
 
+auto_switch = false
 [keys]
 prefix = "ctrl+b"
 focus_pane_left  = "prefix+h"
@@ -15,3 +17,5 @@ workspace_picker = "prefix+w"
 goto             = "prefix+g"
 copy_mode  = "prefix+y"  # herdr's copy-mode entry key; copy-mode's own internal keys (v/space select, y/Enter copy, q/Esc cancel) aren't configurable
 
+[ui.toast]
+delivery = "system"
